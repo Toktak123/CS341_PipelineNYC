@@ -138,8 +138,8 @@ bash test/run_all.sh # รัน test 01–05 ตามลำดับ
 
 ### ดูผลลัพธ์
 - **Step Functions Console:** สถานะและ input/output ของทุก state ในแต่ละ execution
-- **S3:** reports/latest/*.csv (ผลวิเคราะห์ + คุณภาrข้อมูล), summary/latest/analysis_summary.json (คำตอบ, ความครบของเดือน, การตรวจว่าจำนวนแถว)
-
+- **S3:** reports/latest/*.csv (ผลวิเคราะห์ + คุณภาพข้อมูล), summary/latest/analysis_summary.json (คำตอบ, ความครบของเดือน, การตรวจว่าจำนวนแถว)
+- **ใน repo:** docs/results/ (ผลจากการรันจริง 6 เดือน)
 
 ### ลบทรัพยากร
 ```bash
