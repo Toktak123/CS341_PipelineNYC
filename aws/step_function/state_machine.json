@@ -1,0 +1,405 @@
+{
+  "Comment": "CS341 NYC TLC Taxi pipeline (1 execution = 1 month): Fetch -> Check -> Validate -> Quarantine | Transform -> Verify -> PublishIceberg -> FinalizeIceberg -> Analysis",
+  "QueryLanguage": "JSONata",
+  "StartAt": "Fetch_batch",
+  "States": {
+    "Fetch_batch": {
+      "Type": "Task",
+      "Comment": "Raw: download the month's 4 trip files to S3 (skip if present)",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Output": "{% $states.result.Payload %}",
+      "Arguments": {
+        "Payload": "{% $merge([{'dq_threshold_pct': 5, 'force_reprocess': false, 'force_download': false, 'run_id': $states.context.Execution.Name}, $states.input]) %}",
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:nyc_fetch_batch:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Next": "Check_batch",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed",
+          "Output": "{% $merge([$states.input, {'error': $states.errorOutput}]) %}",
+          "Comment": "Fail when python raises (error name = exception class)"
+        }
+      ]
+    },
+    "Check_batch": {
+      "Type": "Task",
+      "Comment": "Check raw files exist and whether the success marker exists",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Output": "{% $states.result.Payload %}",
+      "Arguments": {
+        "Payload": "{% $states.input %}",
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:nyc_check_batch:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Next": "AlreadyProcessed?",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed",
+          "Output": "{% $merge([$states.input, {'error': $states.errorOutput}]) %}",
+          "Comment": "Fail when python raises (error name = exception class)"
+        }
+      ]
+    },
+    "AlreadyProcessed?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Condition": "{% $states.input.check.status = \"ALREADY_PROCESSED\" %}",
+          "Next": "StopAtAlreadyProcessed"
+        },
+        {
+          "Condition": "{% $states.input.check.status = \"INVALID_INPUT\" %}",
+          "Next": "InvalidInput"
+        }
+      ],
+      "Default": "Validate_batch"
+    },
+    "StopAtAlreadyProcessed": {
+      "Type": "Succeed"
+    },
+    "InvalidInput": {
+      "Type": "Fail",
+      "Error": "InvalidInput",
+      "Cause": "{% $states.input.check.reason %}"
+    },
+    "Validate_batch": {
+      "Type": "Task",
+      "Comment": "DQ checks -> dq_results + quality gate",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Output": "{% $states.result.Payload %}",
+      "Arguments": {
+        "Payload": "{% $states.input %}",
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:nyc_validate_batch:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": [
+            "AthenaQueryError"
+          ],
+          "IntervalSeconds": 15,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "IsValid?",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed",
+          "Output": "{% $merge([$states.input, {'error': $states.errorOutput}]) %}",
+          "Comment": "Fail when python raises (error name = exception class)"
+        }
+      ]
+    },
+    "IsValid?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Condition": "{% $states.input.validation.status = \"NOT_PASSED\" %}",
+          "Next": "Quarantine_batch"
+        }
+      ],
+      "Default": "Transform_batch"
+    },
+    "Quarantine_batch": {
+      "Type": "Task",
+      "Comment": "Record a month that failed the gate in batch_quarantine",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Output": "{% $states.result.Payload %}",
+      "Arguments": {
+        "Payload": "{% $states.input %}",
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:nyc_quarantine_batch:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": [
+            "AthenaQueryError"
+          ],
+          "IntervalSeconds": 15,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Quarantined",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed",
+          "Output": "{% $merge([$states.input, {'error': $states.errorOutput}]) %}",
+          "Comment": "Fail when python raises (error name = exception class)"
+        }
+      ]
+    },
+    "Quarantined": {
+      "Type": "Succeed"
+    },
+    "Transform_batch": {
+      "Type": "Task",
+      "Comment": "UNLOAD curated + rejected -> S3 staging",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Output": "{% $states.result.Payload %}",
+      "Arguments": {
+        "Payload": "{% $states.input %}",
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:nyc_transform_batch:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": [
+            "AthenaQueryError"
+          ],
+          "IntervalSeconds": 15,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Verify_batch",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed",
+          "Output": "{% $merge([$states.input, {'error': $states.errorOutput}]) %}",
+          "Comment": "Fail when python raises (error name = exception class)"
+        }
+      ]
+    },
+    "Verify_batch": {
+      "Type": "Task",
+      "Comment": "Reconcile raw = curated + rejected in staging",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Output": "{% $states.result.Payload %}",
+      "Arguments": {
+        "Payload": "{% $states.input %}",
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:nyc_verify_batch:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Next": "PublishIceberg",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed",
+          "Output": "{% $merge([$states.input, {'error': $states.errorOutput}]) %}",
+          "Comment": "Fail when python raises (error name = exception class)"
+        }
+      ]
+    },
+    "PublishIceberg": {
+      "Type": "Task",
+      "Comment": "Delete marker -> DELETE + INSERT into Iceberg tables",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Output": "{% $states.result.Payload %}",
+      "Arguments": {
+        "Payload": "{% $states.input %}",
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:nyc_publish_iceberg:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": [
+            "AthenaQueryError"
+          ],
+          "IntervalSeconds": 15,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "FinalizeIceberg",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed",
+          "Output": "{% $merge([$states.input, {'error': $states.errorOutput}]) %}",
+          "Comment": "Fail when python raises (error name = exception class)"
+        }
+      ]
+    },
+    "FinalizeIceberg": {
+      "Type": "Task",
+      "Comment": "Check Iceberg counts -> write marker -> delete staging",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Output": "{% $states.result.Payload %}",
+      "Arguments": {
+        "Payload": "{% $states.input %}",
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:nyc_finalize_iceberg:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        }
+      ],
+      "Next": "Analysis_batch",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed",
+          "Output": "{% $merge([$states.input, {'error': $states.errorOutput}]) %}",
+          "Comment": "Fail when python raises (error name = exception class)"
+        }
+      ]
+    },
+    "Analysis_batch": {
+      "Type": "Task",
+      "Comment": "Metrics + DQ report + sample -> s3 reports/ + JSON summary -> s3 summary/",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Output": "{% $states.result.Payload %}",
+      "Arguments": {
+        "Payload": "{% $states.input %}",
+        "FunctionName": "arn:aws:lambda:__REGION__:__ACCOUNT__:function:nyc_analysis_batch:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": [
+            "AthenaQueryError"
+          ],
+          "IntervalSeconds": 15,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Published",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "PipelineFailed",
+          "Output": "{% $merge([$states.input, {'error': $states.errorOutput}]) %}",
+          "Comment": "Fail when python raises (error name = exception class)"
+        }
+      ]
+    },
+    "Published": {
+      "Type": "Succeed"
+    },
+    "PipelineFailed": {
+      "Type": "Fail",
+      "Error": "{% $states.input.error.Error %}",
+      "Cause": "{% $states.input.error.Cause %}"
+    }
+  }
+}
