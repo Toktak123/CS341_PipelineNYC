@@ -82,7 +82,7 @@ Pipeline แบบ batch บน AWS ประมวลผลทีละเด�
 1. เข้าใช้งาน Learner Lab (region N. Virginia)
 2. เปิด CloudShell -> Actions -> Upload file -> อัปโหลด zip ของ repo
    ```bash
-   unzip -o nyc-taxi-pipeline.zip && cd nyc-taxi-pipeline
+   unzip -o CS341_PipelineNYC.zip && cd CS341_PipelineNYC
    ```
 3. ปรับค่าตั้งต้น:
    ```bash
