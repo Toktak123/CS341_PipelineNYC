@@ -13,8 +13,6 @@ Pipeline แบบ batch บน AWS ประมวลผลทีละเด�
 
 แหล่งข้อมูล: NYC TLC Trip Record Data (https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
 
-ดาวน์โหลดจาก https://d37ci6vzurychx.cloudfront.net/trip-data/{type}_tripdata_YYYY-MM.parquet
-
 | ประเภท | ไฟล์ |
 |---|---|
 | Yellow Taxi | yellow_tripdata_YYYY-MM.parquet |
