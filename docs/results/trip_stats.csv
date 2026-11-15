@@ -1,0 +1,5 @@
+"taxi_type","trips","avg_distance_mi","median_distance_mi","avg_fare_usd","median_fare_usd","avg_duration_min","median_duration_min","imputed_pct"
+"fhvhv","120864589","5.01","3.04","25.66","19.42","19.8","16.0","0.01"
+"yellow","20331024","3.3","1.75","19.35","13.71","16.9","12.6","12.06"
+"fhv","8117646",,,,,"25.5","18.4","0.0"
+"green","339622","2.7","1.84","17.79","13.87","18.9","11.7","5.4"

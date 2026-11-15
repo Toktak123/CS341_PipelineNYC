@@ -1,0 +1,182 @@
+{
+  "question": "In H1 2024, which vehicle type was used the most (by number of trips, 1 row = 1 trip)?",
+  "generated_at": "2026-11-15T11:38:07+00:00",
+  "run_id": "nyc-2024-06-20261115-113649",
+  "triggered_by_month": "2024-06",
+  "coverage": {
+    "months_in_curated": [
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06"
+    ],
+    "missing_months": [],
+    "complete_h1_2024": true
+  },
+  "answer": {
+    "most_used_type": "fhvhv",
+    "total_trips": 120864589,
+    "share_pct": 80.76
+  },
+  "ranking": [
+    {
+      "rank": 1,
+      "taxi_type": "fhvhv",
+      "total_trips": 120864589,
+      "share_pct": 80.76,
+      "first_month": "2024-01",
+      "last_month": "2024-06"
+    },
+    {
+      "rank": 2,
+      "taxi_type": "yellow",
+      "total_trips": 20331024,
+      "share_pct": 13.59,
+      "first_month": "2024-01",
+      "last_month": "2024-06"
+    },
+    {
+      "rank": 3,
+      "taxi_type": "fhv",
+      "total_trips": 8117646,
+      "share_pct": 5.42,
+      "first_month": "2024-01",
+      "last_month": "2024-06"
+    },
+    {
+      "rank": 4,
+      "taxi_type": "green",
+      "total_trips": 339622,
+      "share_pct": 0.23,
+      "first_month": "2024-01",
+      "last_month": "2024-06"
+    }
+  ],
+  "monthly_trips": {
+    "2024-01": {
+      "fhvhv": {
+        "trips": 19663909,
+        "share_pct": 82.02
+      },
+      "yellow": {
+        "trips": 2964504,
+        "share_pct": 12.37
+      },
+      "fhv": {
+        "trips": 1289707,
+        "share_pct": 5.38
+      },
+      "green": {
+        "trips": 56502,
+        "share_pct": 0.24
+      }
+    },
+    "2024-02": {
+      "fhvhv": {
+        "trips": 19359141,
+        "share_pct": 82.04
+      },
+      "yellow": {
+        "trips": 3007450,
+        "share_pct": 12.75
+      },
+      "fhv": {
+        "trips": 1175664,
+        "share_pct": 4.98
+      },
+      "green": {
+        "trips": 53545,
+        "share_pct": 0.23
+      }
+    },
+    "2024-03": {
+      "fhvhv": {
+        "trips": 21280781,
+        "share_pct": 80.64
+      },
+      "yellow": {
+        "trips": 3582374,
+        "share_pct": 13.58
+      },
+      "fhv": {
+        "trips": 1468838,
+        "share_pct": 5.57
+      },
+      "green": {
+        "trips": 57428,
+        "share_pct": 0.22
+      }
+    },
+    "2024-04": {
+      "fhvhv": {
+        "trips": 19733022,
+        "share_pct": 79.74
+      },
+      "yellow": {
+        "trips": 3514069,
+        "share_pct": 14.2
+      },
+      "fhv": {
+        "trips": 1444557,
+        "share_pct": 5.84
+      },
+      "green": {
+        "trips": 56454,
+        "share_pct": 0.23
+      }
+    },
+    "2024-05": {
+      "fhvhv": {
+        "trips": 20704522,
+        "share_pct": 80.12
+      },
+      "yellow": {
+        "trips": 3723632,
+        "share_pct": 14.41
+      },
+      "fhv": {
+        "trips": 1352389,
+        "share_pct": 5.23
+      },
+      "green": {
+        "trips": 60974,
+        "share_pct": 0.24
+      }
+    },
+    "2024-06": {
+      "fhvhv": {
+        "trips": 20123214,
+        "share_pct": 80.16
+      },
+      "yellow": {
+        "trips": 3538995,
+        "share_pct": 14.1
+      },
+      "fhv": {
+        "trips": 1386491,
+        "share_pct": 5.52
+      },
+      "green": {
+        "trips": 54719,
+        "share_pct": 0.22
+      }
+    }
+  },
+  "data_quality": {
+    "reconciliation_status_count": {
+      "OK": 24
+    },
+    "all_reconciled": true,
+    "raw_rows": 149655796,
+    "curated_rows": 149652881,
+    "quarantine_rows": 2915,
+    "max_rejected_pct": {
+      "year_month": "2024-01",
+      "taxi_type": "green",
+      "rejected_pct": 0.0866
+    }
+  },
+  "source_reports": "s3://nyc-taxi-pipeline-949829275735/reports/nyc-2024-06-20261115-113649/"
+}
